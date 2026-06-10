@@ -168,3 +168,23 @@ st.success(
     f"'{top_station['역명']}'이며 "
     f"{diff:,}명 차이로 다른 역들과 차이가 있습니다."
 )
+# -----------------------
+# 자동 분석 문장 생성
+# -----------------------
+total_passengers = station_df["총승객수"].sum()
+top_station = station_df.iloc[0]["역명"]
+top_count = station_df.iloc[0]["총승객수"]
+
+avg_passengers = int(total_passengers / len(station_df))
+
+analysis_text = (
+    f"🚇 {selected_line}는 총 {len(station_df)}개의 주요 역이 분석되었으며, "
+    f"전체 이용객 수는 약 {total_passengers:,}명이다. "
+    f"이 중 가장 이용객이 많은 역은 {top_station}으로 "
+    f"{top_count:,}명이 이용하여 가장 높은 비중을 차지한다. "
+    f"평균적으로 각 역은 약 {avg_passengers:,}명의 승객이 이용하는 것으로 나타났다. "
+    f"이를 통해 {selected_line}는 서울 내 주요 생활·상업 지역을 연결하는 핵심 노선임을 확인할 수 있다."
+)
+
+st.subheader("📊 자동 분석 결과")
+st.info(analysis_text)
