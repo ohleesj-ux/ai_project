@@ -1,12 +1,14 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.font_manager as fm
 import platform
 
-st.set_page_config(page_title="서울시 지하철 승하차 인원 분석", layout="wide")
+st.set_page_config(
+    page_title="서울시 지하철 이용객 분석",
+    layout="wide"
+)
 
-# 한글 폰트 설정
+# 한글 깨짐 방지
 if platform.system() == "Windows":
     plt.rcParams["font.family"] = "Malgun Gothic"
 elif platform.system() == "Darwin":
@@ -16,82 +18,82 @@ else:
 
 plt.rcParams["axes.unicode_minus"] = False
 
-st.title("🚇 서울시 지하철 호선별 역별 승하차 인원")
+st.title("🚇 서울시 지하철 호선별 역별 승하차 인원 분석")
 
-uploaded_file = st.file_uploader(
-    "CSV 파일을 업로드하세요",
-    type=["csv"]
+# CSV 자동 불러오기
+@st.cache_data
+def load_data():
+    return pd.read_csv(
+        "서울시 지하철호선별 역별 승하차 인원 정보.csv",
+        encoding="cp949"
+    )
+
+df = load_data()
+
+# 컬럼명 공백 제거
+df.columns = df.columns.str.strip()
+
+# 총 승객수 계산
+df["총승객수"] = (
+    df["승차총승객수"] +
+    df["하차총승객수"]
 )
 
-if uploaded_file is not None:
+# 호선 선택
+line_list = sorted(df["호선명"].unique())
 
-    df = pd.read_csv(uploaded_file, encoding="cp949")
+selected_line = st.selectbox(
+    "지하철 호선을 선택하세요",
+    line_list
+)
 
-    # 컬럼명 공백 제거
-    df.columns = df.columns.str.strip()
+# 선택한 호선 데이터
+line_df = df[df["호선명"] == selected_line]
 
-    # 승하차 총합
-    df["총승객수"] = (
-        df["승차총승객수"] +
-        df["하차총승객수"]
-    )
+# 역별 승객수 집계
+station_df = (
+    line_df.groupby("역명")["총승객수"]
+    .sum()
+    .sort_values(ascending=False)
+    .reset_index()
+)
 
-    st.subheader("데이터 미리보기")
-    st.dataframe(df.head())
+st.subheader(f"🚉 {selected_line} 역별 승하차 인원")
 
-    # 호선 선택
-    lines = sorted(df["호선명"].unique())
+fig, ax = plt.subplots(figsize=(15, 6))
 
-    selected_line = st.selectbox(
-        "지하철 호선을 선택하세요",
-        lines
-    )
+ax.plot(
+    station_df["역명"],
+    station_df["총승객수"],
+    color="hotpink",
+    linewidth=3,
+    marker="o"
+)
 
-    # 선택 호선 필터링
-    line_df = df[df["호선명"] == selected_line]
+ax.set_title(f"{selected_line} 역별 승하차 인원")
+ax.set_xlabel("지하철역")
+ax.set_ylabel("승객수")
 
-    # 역별 집계
-    station_df = (
-        line_df.groupby("역명")["총승객수"]
-        .sum()
-        .sort_values(ascending=False)
-        .reset_index()
-    )
+# 인구(승객수) 단위 구분선
+ax.grid(
+    True,
+    axis="y",
+    linestyle="--",
+    alpha=0.6
+)
 
-    st.subheader(f"{selected_line} 역별 승하차 인원")
+plt.xticks(rotation=90)
 
-    fig, ax = plt.subplots(figsize=(14, 6))
+st.pyplot(fig)
 
-    ax.plot(
-        station_df["역명"],
-        station_df["총승객수"],
-        color="hotpink",
-        linewidth=3,
-        marker="o"
-    )
+st.subheader("📊 역별 승객수 데이터")
 
-    ax.set_xlabel("지하철역")
-    ax.set_ylabel("승하차 인원")
-    ax.set_title(f"{selected_line} 역별 승하차 인원")
-
-    # 인구(승객수) 단위 구분선
-    ax.grid(
-        axis="y",
-        linestyle="--",
-        alpha=0.6
-    )
-
-    plt.xticks(rotation=90)
-
-    st.pyplot(fig)
-
-    st.subheader("역별 승객 수")
-
-    st.dataframe(
-        station_df.rename(
-            columns={
-                "역명": "지하철역",
-                "총승객수": "승객수"
-            }
-        )
-    )
+st.dataframe(
+    station_df.rename(
+        columns={
+            "역명": "지하철역",
+            "총승객수": "승객수"
+        }
+    ),
+    use_container_width=True
+)
