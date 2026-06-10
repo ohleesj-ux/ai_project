@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import platform
+import plotly.express as px
 
 # -----------------------
 # 페이지 설정
@@ -11,18 +10,6 @@ st.set_page_config(
     page_icon="🚇",
     layout="wide"
 )
-
-# -----------------------
-# 한글 폰트 설정
-# -----------------------
-if platform.system() == "Windows":
-    plt.rcParams["font.family"] = "Malgun Gothic"
-elif platform.system() == "Darwin":
-    plt.rcParams["font.family"] = "AppleGothic"
-else:
-    plt.rcParams["font.family"] = "NanumGothic"
-
-plt.rcParams["axes.unicode_minus"] = False
 
 # -----------------------
 # 제목
@@ -42,9 +29,10 @@ def load_data():
 
 df = load_data()
 
+# 컬럼명 정리
 df.columns = df.columns.str.strip()
 
-# 총 승객수
+# 총 승객수 계산
 df["총승객수"] = (
     df["승차총승객수"] +
     df["하차총승객수"]
@@ -56,14 +44,15 @@ df["총승객수"] = (
 line_list = sorted(df["호선명"].unique())
 
 selected_line = st.selectbox(
-    "🚉 지하철 호선 선택",
+    "🚉 지하철 호선을 선택하세요",
     line_list
 )
 
+# 선택한 호선 데이터
 line_df = df[df["호선명"] == selected_line]
 
 # -----------------------
-# 역별 집계
+# 역별 승객수 집계
 # -----------------------
 station_df = (
     line_df.groupby("역명")["총승객수"]
@@ -88,56 +77,38 @@ st.metric(
 # -----------------------
 # 그래프
 # -----------------------
-st.subheader(f"📈 {selected_line} 이용객 TOP 10 역")
-
-fig, ax = plt.subplots(figsize=(14, 6))
-
-ax.plot(
-    station_df["역명"],
-    station_df["총승객수"],
-    color="hotpink",
-    marker="o",
-    linewidth=3,
-    markersize=8
+fig = px.line(
+    station_df,
+    x="역명",
+    y="총승객수",
+    markers=True,
+    title=f"{selected_line} 이용객 TOP 10 역"
 )
 
-# 숫자 표시
-for i, v in enumerate(station_df["총승객수"]):
-    ax.text(
-        i,
-        v,
-        f"{v:,}",
-        ha="center",
-        va="bottom",
-        fontsize=8
-    )
-
-# 1위 역 강조
-ax.scatter(
-    station_df.iloc[0]["역명"],
-    station_df.iloc[0]["총승객수"],
-    s=250,
-    marker="*"
+# 핫핑크 색상
+fig.update_traces(
+    line_color="hotpink",
+    marker=dict(size=10)
 )
 
-ax.set_title(
-    f"{selected_line} 이용객 TOP 10 역",
-    fontsize=16,
-    fontweight="bold"
+# 그래프 꾸미기
+fig.update_layout(
+    xaxis_title="지하철역",
+    yaxis_title="승객수",
+    hovermode="x unified",
+    height=600
 )
 
-ax.set_xlabel("지하철역")
-ax.set_ylabel("승객수")
-
-ax.grid(
-    axis="y",
-    linestyle="--",
-    alpha=0.6
+# 가로 구분선
+fig.update_yaxes(
+    showgrid=True,
+    gridwidth=1
 )
 
-plt.xticks(rotation=45)
-
-st.pyplot(fig)
+st.plotly_chart(
+    fig,
+    use_container_width=True
+)
 
 # -----------------------
 # 순위표
@@ -172,6 +143,6 @@ st.dataframe(
 # 설명
 # -----------------------
 st.info(
-    f"{selected_line}에서 가장 이용객이 많은 역은 "
+    f"👑 {selected_line}에서 가장 이용객이 많은 역은 "
     f"'{top_station}'이며 총 {top_count:,}명이 이용했습니다."
 )
